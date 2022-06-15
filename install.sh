@@ -18,6 +18,7 @@ install_file="${WORKSPACE}/lib/install/${OS}/${OS_VERSION}/install.sh"
 
 . ${install_file}
 
+prepare_repo
 install_tmux
 install_zsh
 install_tm

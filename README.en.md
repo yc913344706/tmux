@@ -13,6 +13,7 @@ And, tm is the best tool for team work
 
 > now, it only support the following os:
 - ubuntu 18.04
+- centos 7
 
 ## install manually
 

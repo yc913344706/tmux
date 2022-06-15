@@ -1,17 +1,20 @@
 #!/bin/bash
 
-apt_update()
+yum_update()
 {
-	[ -n "${TMUX_APT_UPDATED}" ] || {
-		apt update -y
-		TMUX_APT_UPDATED=true
+	[ -n "${TMUX_YUM_UPDATED}" ] || {
+		yum makecache
+		TMUX_YUM_UPDATED=true
 	}
 }
 
 prepare_repo()
 {
-	[ -f "/etc/apt/sources.list.tmux.bak" ] || mv /etc/apt/sources.list /etc/apt/sources.list.tmux.bak
-	cp ${WORKSPACE}/lib/repos/${OS}/${OS_VERSION}/sources.list /etc/apt/sources.list
+	[ -d "/etc/yum.repos.d/tmux.bak" ] || {
+		mkdir -p /etc/yum.repos.d/tmux.bak
+		mv /etc/yum.repos.d/* /etc/yum.repos.d/tmux.bak
+	}
+	cp ${WORKSPACE}/lib/repos/${OS}/${OS_VERSION}/*.repo /etc/yum.repos.d/
 }
 
 install_tmux()
@@ -21,8 +24,8 @@ install_tmux()
 		return 0
 	}
 
-	apt_update
-	apt install -y tmux || die "install pkg failed: tmux"
+	yum_update
+	yum install -y tmux || die "install pkg failed: tmux"
 }
 
 install_tm()
@@ -35,10 +38,22 @@ install_tm()
 	command -v groupadd || die "cannot find cmd: groupadd"
 	groupadd tm_team
 
-	[ -f "${WORKSPACE}/etc/$(basename $SHELL)/tm.conf" ] || die "cannot find right tm.conf"
+	V_tmux=$(echo | awk "{printf (\"%.0f\n\",$(tmux -V | awk '{print $2}') * 1000)}" )
+	V_2_1=$(echo  | awk '{printf ("%.0f\n",2.1 * 1000)}' )
+	V_1_8=$(echo  | awk '{printf ("%.0f\n",1.8 * 1000)}' )
+
+	if [ ${V_tmux} -ge ${V_2_1} ]; then
+		TM_CONF="${WORKSPACE}/etc/$(basename $SHELL)/2.1/tm.conf"
+	elif [ ${V_tmux} -eq ${V_1_8} ]; then
+		TM_CONF="${WORKSPACE}/etc/$(basename $SHELL)/1.8/tm.conf"
+	else
+		die "cannot find right tm.conf for your version: ${V_tmux}"
+	fi
+
+	[ -f "${TM_CONF}" ] || die "cannot find right tm.conf"
 	[ -f "${WORKSPACE}/bin/$(basename $SHELL)/tm" ] || die "cannot find right tm"
 
-	cp ${WORKSPACE}/etc/$(basename $SHELL)/tm.conf /etc/
+	cp ${TM_CONF} /etc/
 
 	[ -d "/usr/local/sbin" ] || mkdir -p /usr/local/sbin 
 	echo $PATH | grep -qw /usr/local/sbin || {
@@ -74,8 +89,8 @@ install_zsh()
 	}
 
 	command -v zsh || {
-		apt_update
-		apt install -y zsh || die "install pkg failed: zsh"
+		yum_update
+		yum install -y zsh || die "install pkg failed: zsh"
 	}
 
 	chsh -s `which zsh`
