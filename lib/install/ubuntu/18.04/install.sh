@@ -32,13 +32,25 @@ install_tm()
 		return 0
 	}
 
-	command -v groupadd || die "cannot find cmd: groupadd"
-	groupadd tm_team
+	command -v groupadd > /dev/null || die "cannot find cmd: groupadd"
+	grep -q '^tm_team:' /etc/group  || groupadd tm_team
 
-	[ -f "${WORKSPACE}/etc/$(basename $SHELL)/tm.conf" ] || die "cannot find right tm.conf"
+	V_tmux=$(echo | awk "{printf (\"%.0f\n\",$(tmux -V | awk '{print $2}') * 1000)}" )
+	V_2_1=$(echo  | awk '{printf ("%.0f\n",2.1 * 1000)}' )
+	V_1_8=$(echo  | awk '{printf ("%.0f\n",1.8 * 1000)}' )
+
+	if [ ${V_tmux} -ge ${V_2_1} ]; then
+		TM_CONF="${WORKSPACE}/etc/tmux/$(basename $SHELL)/2.1/tm.conf"
+	elif [ ${V_tmux} -eq ${V_1_8} ]; then
+		TM_CONF="${WORKSPACE}/etc/tmux/$(basename $SHELL)/1.8/tm.conf"
+	else
+		die "cannot find right tm.conf for your version: ${V_tmux}"
+	fi
+
+	[ -f "${TM_CONF}" ] || die "cannot find right tm.conf"
 	[ -f "${WORKSPACE}/bin/$(basename $SHELL)/tm" ] || die "cannot find right tm"
 
-	cp ${WORKSPACE}/etc/$(basename $SHELL)/tm.conf /etc/
+	cp ${TM_CONF} /etc/
 
 	[ -d "/usr/local/sbin" ] || mkdir -p /usr/local/sbin 
 	echo $PATH | grep -qw /usr/local/sbin || {
